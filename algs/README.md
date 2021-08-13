@@ -84,3 +84,44 @@ func levelOrder(root *TreeNode) [][]int {
 ### Solve Tree Problems Recursively
  - "Top-down" Solution. Value - then children
  - "Bottom-up" Solution. Children then value
+ 
+### Tasks
+#### tree max depth
+```golang
+func maxDepth(root *TreeNode) int {
+    if(root == nil) {
+        return 0
+    }
+    left := 0
+    right := 0
+    if root.Left != nil {
+        left = maxDepth(root.Left)
+    }
+    if root.Right != nil {
+        right = maxDepth(root.Right)
+    }
+    
+    max := 0
+    if left > right {
+        max = left
+    } else {
+        max = right
+    }
+    
+    return max + 1
+}
+```
+### construct trees
+#### from preorder and postorder
+The last element in postorder is the root
+The elements on the left side of the root element in preorder - the left subtree
+The elements on the right side of the root element in preorder - the right subtree
+#### from preorder and inorder
+The first element in preorder is the root
+The elements on the left side of the root element in inorder - the left subtree
+The elements on the right side of the root element in inorder - the right subtree
+### tips
+Root always appear in the end of postorder traversal array
+### good examples
+https://leetcode.com/explore/learn/card/data-structure-tree/133/conclusion/932/
+https://leetcode.com/explore/learn/card/data-structure-tree/133/conclusion/995/

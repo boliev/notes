@@ -50,10 +50,10 @@ Methods must be declared in the same package as their associated type; Go doesn�
 
 ```golang
 func NewSaiyan(name string, power int) *Saiyan {
-	return &Saiyan{
-		Name: name,
-		Power: power,
-	}
+    return &Saiyan{
+        Name: name,
+        Power: power,
+    }
 }
 ```
 
@@ -67,9 +67,9 @@ goku := &Saiyan{}
 
 ```golang
 type person struct {
-	name string
-	age  int
-	pet  string
+    name string
+    age  int
+    pet  string
 }
 
 var fred person
@@ -77,34 +77,34 @@ bob := person{}
 ```
 ```golang
 julia := person{
-	"Julia",
-	40,
-	"cat",
+    "Julia",
+    40,
+    "cat",
 }
 
 beth := person{
-	age:  30,
-	name: "Beth",
+    age:  30,
+    name: "Beth",
 }
 ```
 
 ### Composition
 ```golang
 type Person struct {
-	Name string
+    Name string
 }
 func (p *Person) Introduce() {
-	fmt.Printf("Hi, I'm %s\n", p.Name)
+    fmt.Printf("Hi, I'm %s\n", p.Name)
 }
 type Saiyan struct {
-	*Person
-	Power int
+    *Person
+    Power int
 }
 
 // and to use it:
 goku := &Saiyan{
-	Person: &Person{"Goku"},
-	Power: 9001,
+    Person: &Person{"Goku"},
+    Power: 9001,
 }
 goku.Introduce()
 ```
@@ -114,7 +114,7 @@ access the fields and functions of the composed type. However, the Go compiler d
 perfectly valid
 ```golang
 goku := &Saiyan{
-	Person: &Person{"Goku"},
+    Person: &Person{"Goku"},
 }
 fmt.Println(goku.Name)
 fmt.Println(goku.Person.Name)
@@ -131,6 +131,19 @@ scores := [4]int{9001, 9333, 212, 33}
 ```golang
 for index, value := range scores {
 
+}
+```
+Remove the first element
+```golang
+arr = arr[1:]
+```
+Reverse array
+```golang
+func reverseArr(arr []int) []int {
+    for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
+        arr[i], arr[j] = arr[j], arr[i]
+    }
+    return arr
 }
 ```
 
@@ -177,49 +190,49 @@ totalWins := map[string]int{}
 ```
 ```golang
 teams := map[string][]string {
-	"Orcas": []string{"Fred", "Ralph", "Bijou"},
-	"Lions": []string{"Sarah", "Peter", "Billie"},
-	"Kittens": []string{"Waldo", "Raul", "Ze"},
+    "Orcas": []string{"Fred", "Ralph", "Bijou"},
+    "Lions": []string{"Sarah", "Peter", "Billie"},
+    "Kittens": []string{"Waldo", "Raul", "Ze"},
 }
 ```
 ```golang
 m := map[string]int{
-	"hello": 5,
-	"world": 0,
+    "hello": 5,
+    "world": 0,
 }
 v, ok := m["hello"]
 fmt.Println(v, ok)
 ```
 ```golang
 func main() {
-	lookup := make(map[string]int)
-	lookup["goku"] = 9001
-	power, exists := lookup["vegeta"]
-	// prints 0, false
-	// 0 is the default value for an integer
-	fmt.Println(power, exists)
-	// returns 1
-	total := len(lookup)
-	// has no return, can be called on a nonexisting key
-	delete(lookup, "goku")
+    lookup := make(map[string]int)
+    lookup["goku"] = 9001
+    power, exists := lookup["vegeta"]
+    // prints 0, false
+    // 0 is the default value for an integer
+    fmt.Println(power, exists)
+    // returns 1
+    total := len(lookup)
+    // has no return, can be called on a nonexisting key
+    delete(lookup, "goku")
 }
 ```
 
 ```golang
 type Saiyan struct {
-	Name string
-	Friends map[string]*Saiyan
+    Name string
+    Friends map[string]*Saiyan
 }
 goku := &Saiyan{
-	Name: "Goku",
-	Friends: make(map[string]*Saiyan),
+    Name: "Goku",
+    Friends: make(map[string]*Saiyan),
 }
 goku.Friends["krillin"] = ... //todo load or create Krillin
 ```
 ```golang
 lookup := map[string]int{
-	"goku": 9001,
-	"gohan": 2044,
+    "goku": 9001,
+    "gohan": 2044,
 }
 ```
 ```golang
@@ -238,8 +251,8 @@ commits := map[string]int{
 The delete function takes a map and a key and then removes the key-value pair with the specified key. If the key isn’t present in the map or if the map is nil, nothing happens. The delete function doesn’t return a value.
 ```golang
 m := map[string]int{
-	"hello": 5,
-	"world": 10,
+    "hello": 5,
+    "world": 10,
 }
 delete(m, "hello")
 ```
@@ -258,10 +271,13 @@ When you pass a nil pointer to a function, you cannot make the value non-nil. Yo
 A pointer is simply a variable that holds the location in memory where a value is stored.
 
 The `&` is the address operator. It precedes a value type and returns the address of the memory location where the value is stored.
+
 ```golang
 x := "hello"
 pointerToX := &x
+
 ```
+
 The `*` is the indirection operator. It precedes a variable of pointer type and returns the pointed-to value. This is called `dereferencing`.
 ```golang
 x := 10
@@ -297,3 +313,13 @@ sort.Sort(sort.Reverse(sort.IntSlice(are)))
 const MaxInt = int(^uint(0) >> 1)
 const MinInt = -MaxInt - 1
 ```
+
+## Concurrency and Parallelism
+### Thread vs Process
+ - Process is the app instance, undependent object, who has system recources,. It has its own dedicated address space. One process can't get access to variables and data structures of another process. Only through files or other interprocess communication channels.
+ - Thread uses the same stack space as a process. Many threads share the data of thair states. Each thread can iterate with the same memory.
+
+## Questions
+ - Race-conditions?
+ - Concurrency and Parallelism? What is the difference?
+ - unbuffered and buffered channel
