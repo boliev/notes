@@ -111,6 +111,20 @@ func maxDepth(root *TreeNode) int {
     return max + 1
 }
 ```
+#### Binary search
+```golang
+func searchBST(root *TreeNode, val int) *TreeNode {
+    if root == nil || root.Val == val {
+        return root
+    }
+    
+    if val < root.Val {
+        return searchBST(root.Left, val)
+    }
+    
+    return searchBST(root.Right, val)
+}
+```
 ### construct trees
 #### from preorder and postorder
 The last element in postorder is the root
@@ -125,3 +139,6 @@ Root always appear in the end of postorder traversal array
 ### good examples
 https://leetcode.com/explore/learn/card/data-structure-tree/133/conclusion/932/
 https://leetcode.com/explore/learn/card/data-structure-tree/133/conclusion/995/
+
+## Recursion
+[Time Complexity](https://leetcode.com/explore/learn/card/recursion-i/256/complexity-analysis/1669/)

@@ -14,7 +14,7 @@ go build -o hello_world hello.go //will an put executable file like hello.go
 
 ## Code quality
 ```shell
-go fmt ./
+go fmt ./...
 golint ./...
 go vet ./...
 ```
@@ -26,6 +26,18 @@ Check for shadowing
 ```shell
 go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
 shadow ./...
+```
+
+## go get
+```shell
+go get -u github.com/gin-gonic/gin
+go get -u gorm.io/gorm
+go get -u gorm.io/driver/postgres
+go get github.com/spf13/viper
+go get github.com/sirupsen/logrus
+go get 'go.uber.org/dig@v1'
+go get github.com/dgrijalva/jwt-go
+go get github.com/stretchr/testify
 ```
 
 ## Variables
@@ -134,10 +146,12 @@ for index, value := range scores {
 }
 ```
 Remove the first element
+
 ```golang
 arr = arr[1:]
 ```
 Reverse array
+
 ```golang
 func reverseArr(arr []int) []int {
     for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
@@ -174,6 +188,7 @@ x = append(x,5,6,7)
 ```
 
 Add one slice is appended onto another by using the … operator to expand the source slice into individual values
+
 ```golang
 var x = []int{1,2,3}
 y := []int{20,30,40}
@@ -279,6 +294,7 @@ pointerToX := &x
 ```
 
 The `*` is the indirection operator. It precedes a variable of pointer type and returns the pointed-to value. This is called `dereferencing`.
+
 ```golang
 x := 10
 pointerToX := &x
@@ -288,12 +304,14 @@ z := 5 + *pointerToX
 fmt.Println(z)           // prints 15
 ```
 Before dereferencing a pointer, you must make sure that the pointer is non-nil. Your program will panic if you attempt to dereference a nil pointer.
+
 ```golang
 var x *int
 fmt.Println(x == nil) // prints true
 fmt.Println(*x)       // panics”
 ```
 A pointer type is a type that represents a pointer. It is written with a * before a type name. A pointer type can be based on any type.
+
 ```golang
 x := 10
 var pointerToX *int
@@ -304,6 +322,7 @@ The other common usage of pointers in Go is to indicate the difference between a
 
 ## Sorting
 Sort int slice desc
+
 ```golang
 sort.Sort(sort.Reverse(sort.IntSlice(are)))
 ```
