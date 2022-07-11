@@ -262,6 +262,211 @@ NoSQL doesn’t follow any specific standard, like how relational databases foll
 ##### Consistency
 NoSQL databases provide different products based on the specific trade-offs between consistency and availability when failures can happen. We won’t have strong data integrity, like primary and referential integrities in a relational database. Data might not be strongly consistent but slowly converging using a weak model like eventual consistency.
 
+### Choose the right database
+#### Relational Database
+- If the data to be stored is structured
+- If ACID properties are required
+- If the size of the data is relatively small and can fit on a node)
+
+#### Non-relational Database
+- If the data to be stored is unstructured
+- If there’s a need to serialize and deserialize data
+- If the size of the data to be stored is large
+
+Note: When NoSQL databases first came into being, they were drastically different to program and use as compared to traditional databases. Though, due to extensive research in academia and industry over the last many years, the programmer-facing differences between NoSQL and traditional stores are blurring. We might be using the same SQL constructs to talk to a NoSQL store and get a similar level of performance and consistency as a traditional store. Google’s Cloud Spanner is one such database that’s geo-replicated with automatic horizontal sharding ability and high-speed global snapshots of data.
+
+
+### Replication
+Replication refers to keeping multiple copies of the data at various nodes (preferably geographically distributed) to achieve availability, scalability, and performance.
+
+#### Synchronous versus asynchronous replication#
+There are two ways to disseminate changes to the replica nodes:
+- Synchronous replication
+- Asynchronous replication
+
+In synchronous replication, the primary node waits for acknowledgments from secondary nodes about updating the data. After receiving acknowledgment from all secondary nodes, the primary node reports success to the client. Whereas in asynchronous replication, the primary node doesn’t wait for the acknowledgment from the secondary nodes and reports success to the client after updating itself.
+
+The advantage of synchronous replication is that all the secondary nodes are completely up to date with the primary node. However, there’s a disadvantage to this approach. If one of the secondary nodes doesn’t acknowledge due to failure or fault in the network, the primary node would be unable to acknowledge the client until it receives the successful acknowledgment from the crashed node. This causes high latency in the response from the primary node to the client.
+
+On the other hand, the advantage of asynchronous replication is that the primary node can continue its work even if all the secondary nodes are down. However, if the primary node fails, the writes that weren’t copied to the secondary nodes will be lost.
+
+#### Data replication models
+- Single leader or primary-secondary replication
+- Multi-leader replication
+- Peer-to-peer or leaderless replication
+
+##### Single leader or primary-secondary replication
+In primary-secondary replication, data is replicated across multiple nodes. One node is designated as the primary. It’s responsible for processing any writes to data stored on the cluster. It also sends all the writes to the secondary nodes and keeps them in sync.
+
+Primary-secondary replication is appropriate when our workload is read-heavy. To better scale with increasing readers, we can add more followers and distribute the read load across the available followers. However, replicating data to many followers can make a primary bottleneck. Additionally, primary-secondary replication is inappropriate if our workload is write-heavy.
+
+Another advantage of primary-secondary replication is that it’s read resilient. Secondary nodes can still handle read requests in case of primary node failure. Therefore, it’s a helpful approach for read-intensive applications.
+
+Replication via this approach comes with inconsistency if we use asynchronous replication. Clients reading from different replicas may see inconsistent data in the case of failure of the primary node that couldn’t propagate updated data to the secondary nodes. So, if the primary node fails, any missed updates not passed on to the secondary nodes can be lost.
+
+###### Primary-secondary replication methods
+There are many different replication methods in primary-secondary replication:
+
+- Statement-based replication
+- Write-ahead log (WAL) shipping
+- Logical (row-based) log replication
+- Let’s discuss each of them in detail.
+
+*Statement-based replication*
+
+In the statement-based replication approach, the primary node saves all statements that it executes, like insert, delete, update, and so on, and sends them to the secondary nodes to perform. This type of replication was used in MySQL before version 5.1.
+
+This type of approach seems good, but it has its disadvantages. For example, any nondeterministic function (such as NOW()) might result in distinct writes on the follower and leader. Furthermore, if a write statement is dependent on a prior write, and both of them reach the follower in the wrong order, the outcome on the follower node will be uncertain.
+
+*Write-ahead log (WAL) shipping*
+
+In the write-ahead log (WAL) shipping approach, the primary node saves the query before executing it in a log file known as a write-ahead log file. It then uses these logs to copy the data onto the secondary nodes. This is used in PostgreSQL and Oracle. The problem with WAL is that it only defines data at a very low level. It’s tightly coupled with the inner structure of the database engine, which makes upgrading software on the leader and followers complicated.
+
+*Logical (row-based) log replication*
+
+In the logical (row-based) log replication approach, all secondary nodes replicate the actual data changes. For example, if a row is inserted or deleted in a table, the secondary nodes will replicate that change in that specific table. The binary log records change to database tables on the primary node at the record level. To create a replica of the primary node, the secondary node reads this data and changes its records accordingly. Row-based replication doesn’t have the same difficulties as WAL because it doesn’t require information about data layout inside the database engine.
+
+#### Multi-leader replication
+As discussed above, single leader replication using asynchronous replication has a drawback. There’s only one primary node, and all the writes have to go through it, which limits the performance. In case of failure of the primary node, the secondary nodes may not have the updated database.
+
+Multi-leader replication is an alternative to single leader replication. There are multiple primary nodes that process the writes and send them to all other primary and secondary nodes to replicate. This type of replication is used in databases along with external tools like the Tungsten Replicator for MySQL.
+
+##### Conflict
+Multi-leader replication gives better performance and scalability than single leader replication, but it also has a significant disadvantage. Since all the primary nodes concurrently deal with the write requests, they may modify the same data, which can create a conflict between them. For example, suppose the same data is edited by two clients simultaneously. In that case, their writes will be successful in their associated primary nodes, but when they reach the other primary nodes asynchronously, it creates a conflict.
+
+##### Conflict avoidance
+A simple strategy to deal with conflicts is to prevent them from happening in the first place. Conflicts can be avoided if the application can verify that all writes for a given record go via the same leader.
+
+However, the conflict may still occur if a user moves to a different location and is now near a different data center. If that happens, we need to reroute the traffic. In such scenarios, the conflict avoidance approach fails and results in concurrent writes.
+
+*Last-write-wins*
+Using their local clock, all nodes assign a timestamp to each update. When a conflict occurs, the update with the latest timestamp is selected.
+
+This approach can also create difficulty because the clock synchronization across nodes is challenging in distributed systems. There’s clock skew that can result in data loss.
+
+*Custom logic*
+In this approach, we can write our own logic to handle conflicts according to the needs of our application. This custom logic can be executed on both reads and writes. When the system detects a conflict, it calls our custom conflict handler.
+
+##### Multi-leader replication topologies
+There are many topologies through which multi-leader replication is implemented, such as circular topology, star topology, and all-to-all topology. The most common is the all-to-all topology. In star and circular topology, there’s again a similar drawback that if one of the nodes fails, it can affect the whole system. That’s why all-to-all is the most used topology.
+
+#### Peer-to-peer/leaderless replication
+In primary-secondary replication, the primary node is a bottleneck and a single point of failure. Moreover, it helps to achieve read scalability but fails in providing write scalability. The peer-to-peer replication model resolves these problems by not having a single primary node. All the nodes have equal weightage and can accept reads and writes requests. Amazon popularized such a scheme in their DynamoDB data store.
+
+Like primary-secondary replication, this replication can also yield inconsistency. This is because when several nodes accept write requests, it may lead to concurrent writes. A helpful approach used for solving write-write inconsistency is called quorums.
+
+##### Quorums
+Let’s suppose we have three nodes. If at least two out of three nodes are guaranteed to return successful updates, it means only one node has failed. This means that if we read from two nodes, at least one of them will have the updated version, and our system can continue working.
+
+If we have `n` nodes, then every write must be updated in at least `w` nodes to be considered a success, and we must read from `r` nodes. We’ll get an updated value from reading as long as `w+r> n` because at least one of the nodes must have an updated write from which we can read. Quorum reads and writes adhere to these `r` and `w` values. These `n`, `w`, and `r` are configurable in Dynamo-style databases.
+
+### Partitioning
+Data partitioning (or sharding) enables us to use multiple nodes where each node manages some part of the whole data. To handle increasing query rates and data amounts, we strive for balanced partitions and balanced read/write load.
+
+#### Sharding
+To divide load among multiple nodes, we need to partition the data by a phenomenon known as partitioning or sharding. In this approach, we split a large dataset into smaller chunks of data stored at different nodes on our network.
+
+The partitioning must be balanced so that each partition receives about the same amount of data. If partitioning is unbalanced, the majority of queries will fall into a few partitions. Partitions that are heavily loaded will create a system bottleneck. The efficacy of partitioning will be harmed because a significant portion of data retrieval queries will be sent to the nodes that carry the highly congested partitions. Such partitions are known as hotspots. Generally, we use the following two ways to shard the data:
+
+- Vertical sharding
+- Horizontal sharding
+
+##### Vertical sharding
+We can put different tables in various database instances, which might be running on a different physical server. We might break a table into multiple tables so that some columns are in one table while the rest are in the other. We should be careful if there are joins between multiple tables. We may like to keep such tables together on one shard.
+
+Often, vertical sharding is used to increase the speed of data retrieval from a table consisting of columns with very wide text or a binary large object (blob). In this case, the column with large text or a blob is split into a different table.
+
+F.x. The Employee table is divided into two tables: a reduced Employee table and an EmployeePicture table. The EmployePicture table has just two columns, EmployeID and Picture, separated from the original table. Moreover, the primary key EmpoloyeeID of the Employee table is added in both partitioned tables. This makes the data read and write easier, and the reconstruction of the table is performed efficiently.
+
+##### Horizontal sharding
+At times, some tables in the databases become too big and affect read/write latency. Horizontal sharding or partitioning is used to divide a table into multiple tables by splitting data row-wise, as shown in the figure in the next section. Each partition of the original table distributed over database servers is called a shard. Usually, there are two strategies available:
+
+- Key-range based sharding
+- Hash based sharding
+
+###### Key-range based sharding
+The basic design techniques used in *Key-range* based sharding multi-table sharding are as follows:
+- There’s a partition key in the Customer mapping table. This table resides on each shard and stores the partition keys used in the shard
+- The partition key column, Customer_Id, is replicated in all other tables as a data isolation point. It has a trade-off between an impact on increased storage and locating the desired shards efficiently. Apart from this, it’s helpful for data and workload distribution to different database shards. The data routing logic uses the partition key at the application tier to map queries specified for a database shard.
+- Primary keys are unique across all database shards
+- The column Creation_date serves as the data consistency point, with an assumption that the clocks of all nodes are synchronized. This column is used as a criterion for merging data from all database shards into the global view when essential.
+
+*Advantages*
+- Using this method, the range-query-based scheme is easy to implement.
+- Range queries can be performed using the partitioning keys, and those can be kept in partitions in sorted order.
+*Disadvantages*
+- Range queries can’t be performed using keys other than the partitioning key.
+- If keys aren’t selected properly, some nodes may have to store more data due to an uneven distribution of the traffic.
+
+###### Hash-based sharding
+Hash-based sharding uses a hash-like function on an attribute, and it produces different values based on which attribute the partitioning is performed. The main concept is to use a hash function on the key to get a hash value and then mod by the number of partitions. Once we’ve found an appropriate hash function for keys, we may give each partition a range of hashes (rather than a range of keys). Any key whose hash occurs inside that range will be kept in that partition.
+
+*Advantages*
+- Keys are uniformly distributed across the nodes.
+*Disadvantages*
+- We can’t perform range queries with this technique. Keys will be spread over all partitions.
+
+##### Rebalance the partitions
+Query load can be imbalanced across the nodes due to many reasons, including the following:
+
+- The distribution of the data isn’t equal.
+- There’s too much load on a single partition.
+- There’s an increase in the query traffic, and we need to add more nodes to keep up.
+- We can apply the following strategies to rebalance partitions.
+
+###### Avoid hash mod n
+Usually, we avoid the hash of a key for partitioning (we used such a scheme to explain the concept of hashing in simple terms earlier). The problem with the addition or removal of nodes in the case of `hashmodn` is that every node’s partition number changes and a lot of data moves. For example, assume we have `hash(key) = 1235`. If we have five nodes at the start, the key will start on node 1 (`1235 mod 5 = 0`). Now, if a new node is added, the key would have to be moved to node 6 (`1235 mod 6 = 5`), and so on. This moving of keys from one node to another makes rebalancing costly.
+
+###### Fixed number of partitions
+In this approach, the number of partitions to be created is fixed at the time when we set our database up. We create a higher number of partitions than the nodes and assign these partitions to nodes. So, when a new node is added to the system, it can take a few partitions from the existing nodes until the partitions are equally divided.
+
+There’s a downside to this approach. The size of each partition grows with the total amount of data in the cluster since all the partitions contain a small part of the total data. If a partition is very small, it will result in too much overhead because we may have to make a large number of small-sized partitions, each costing us some overhead. If the partition is very large, rebalancing the nodes and recovering from node failures will be expensive. It’s very important to choose the right number of partitions. A fixed number of partitions is used in Elasticsearch, Riak, and many more.
+
+###### Dynamic partitioning
+In this approach, when the size of a partition reaches the threshold, it’s split equally into two partitions. One of the two split partitions is assigned to one node and the other one to another node. In this way, the load is divided equally. The number of partitions adapts to the overall data amount, which is an advantage of dynamic partitioning.
+
+However, there’s a downside to this approach. It’s difficult to apply dynamic rebalancing while serving the reads and writes. This approach is used in HBase and MongoDB.
+
+###### Partition proportionally to nodes
+In this approach, the number of partitions is proportionate to the number of nodes, which means every node has fixed partitions. In earlier approaches, the number of partitions was dependent on the size of the dataset. That isn’t the case here. While the number of nodes remains constant, the size of each partition rises according to the dataset size. However, as the number of nodes increases, the partitions shrink. When a new node enters the network, it splits a certain number of current partitions at random, then takes one half of the split and leaves the other half alone. This can result in an unfair split. This approach is used by Cassandra and Ketama.
+
+#### Request routing
+We’ve learned how to partition our data. However, one question arises here: How does a client know which node to connect to while making a request? The allocation of partitions to nodes varies after rebalancing. If we want to read a specific key, how do we know which IP address we need to connect to read?
+
+This problem is also known as service discovery. Following are a few approaches to this problem:
+- Allow the clients to request any node in the network. If that node doesn’t contain the requested data, it forwards that request to the node that does contain the related data.
+- The second approach contains a routing tier. All the requests are first forwarded to the routing tier, and it determines which node to connect to fulfill the request.
+- The clients already have the information related to partitioning and which partition is connected to which node. So, they can directly contact the node that contains the data they need.
+In all of these approaches, the main challenge is to determine how these components know about updates in the partitioning of the nodes.
+
+#### ZooKeeper
+To track changes in the cluster, many distributed data systems need a separate management server like ZooKeeper. Zookeeper keeps track of all the mappings in the network, and each node connects to ZooKeeper for the information. Whenever there’s a change in the partitioning, or a node is added or removed, ZooKeeper gets updated and notifies the routing tier about the change. HBase, Kafka and SolrCloud use ZooKeeper.
+
+#### Advantages and disadvantages of a centralized database#
+##### Advantages
+- Data maintenance, such as updating and taking backups of a centralized database, is easy.
+- Centralized databases provide stronger consistency and ACID transactions than distributed databases.
+- Centralized databases provide a much simpler programming model for the end programmers as compared to distributed databases.
+- It’s more efficient for businesses to have a small amount of data to store that can reside on a single node.
+
+##### Disadvantages
+- A centralized database can slow down, causing high latency for end users, when the number of queries per second accessing the centralized database is approaching single-node limits.
+- A centralized database has a single point of failure. Because of this, its probability of not being accessible is much higher.
+
+#### Advantages and disadvantages of a distributed database#
+##### Advantages
+- It’s fast and easy to access data in a distributed database because data is retrieved from the nearest database shard or the one frequently used.
+- Data with different levels of distribution transparency can be stored in separate places.
+- Intensive transactions consisting of queries can be divided into multiple optimized subqueries, which can be processed in a parallel fashion.
+
+##### Disadvantages
+- Sometimes, data is required from multiple sites, which takes more time than expected.
+- Relations are partitioned vertically or horizontally among different nodes. Therefore, operations such as joins need to reconstruct complete relations by carefully fetching data. These operations can become much more expensive and complex.
+- It’s difficult to maintain consistency of data across sites in the distributed database, and it requires extra measures.
+- Updations and backups in distributed databases take time to synchronize data.
+
+
+
 
 ## Other
  principal engineers or solution architects
