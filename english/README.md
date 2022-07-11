@@ -1,2 +1,2 @@
 # English notes
-- [Conditional Sentences](https://github.com/boliev/notes/blob/18106065e284b6aaa433dd2fbe821786f0c52a3c/english/conditional.md)
+- [Conditional Sentences](conditional.md)
