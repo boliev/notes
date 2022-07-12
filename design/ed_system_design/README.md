@@ -465,7 +465,8 @@ To track changes in the cluster, many distributed data systems need a separate m
 - It’s difficult to maintain consistency of data across sites in the distributed database, and it requires extra measures.
 - Updations and backups in distributed databases take time to synchronize data.
 
-
+## Key-value store
+[Key-value Store](key_value.md)
 
 
 ## Other
